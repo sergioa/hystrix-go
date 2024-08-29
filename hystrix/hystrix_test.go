@@ -2,6 +2,7 @@ package hystrix
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -78,7 +79,7 @@ func TestTimeout(t *testing.T) {
 			resultChan <- 1
 			return nil
 		}, func(ctx context.Context, err error) error {
-			if err == ErrTimeout {
+			if errors.Is(err, ErrTimeout) {
 				resultChan <- 2
 			}
 			return nil
@@ -141,7 +142,7 @@ func TestMaxConcurrent(t *testing.T) {
 
 				select {
 				case err := <-errChan:
-					if err == ErrMaxConcurrency {
+					if errors.Is(err, ErrMaxConcurrency) {
 						bad++
 					}
 				default:
@@ -164,7 +165,7 @@ func TestForceOpenCircuit(t *testing.T) {
 		cb, _, err := GetCircuit("")
 		So(err, ShouldEqual, nil)
 
-		cb.toggleForceOpen(true)
+		_ = cb.toggleForceOpen(true)
 
 		errChan := GoC(context.Background(), "", func(ctx context.Context) error {
 			return nil

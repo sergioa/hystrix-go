@@ -1,11 +1,10 @@
 package hystrix
 
 import (
+	metricCollector "github.com/sergioa/hystrix-go/hystrix/metric_collector"
+	"github.com/sergioa/hystrix-go/hystrix/rolling"
 	"sync"
 	"time"
-
-	"github.com/afex/hystrix-go/hystrix/metric_collector"
-	"github.com/afex/hystrix-go/hystrix/rolling"
 )
 
 type commandExecution struct {
@@ -37,7 +36,7 @@ func newMetricExchange(name string) *metricExchange {
 	return m
 }
 
-// The Default Collector function will panic if collectors are not setup to specification.
+// DefaultCollector The Default Collector function will panic if collectors are not setup to specification.
 func (m *metricExchange) DefaultCollector() *metricCollector.DefaultMetricCollector {
 	if len(m.metricCollectors) < 1 {
 		panic("No Metric Collectors Registered.")
@@ -139,7 +138,7 @@ func (m *metricExchange) ErrorPercent(now time.Time) int {
 	errs := m.DefaultCollector().Errors().Sum(now)
 
 	if reqs > 0 {
-		errPct = (float64(errs) / float64(reqs)) * 100
+		errPct = (errs / reqs) * 100
 	}
 
 	return int(errPct + 0.5)

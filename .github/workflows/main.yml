@@ -1,0 +1,35 @@
+name: Go CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        go-version: [ 1.7.x, 1.8.x, 1.9.x, 1.10.x, tip ]
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Set environment variables
+        run: echo "GORACE=halt_on_error=1" >> $GITHUB_ENV
+
+      - name: Run tests
+        run: |
+          cd hystrix
+          go test -race
+

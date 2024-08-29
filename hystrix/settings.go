@@ -107,15 +107,15 @@ func getSettings(name string) *Settings {
 }
 
 func GetCircuitSettings() map[string]*Settings {
-	copy := make(map[string]*Settings)
+	cpy := make(map[string]*Settings)
 
 	settingsMutex.RLock()
 	for key, val := range circuitSettings {
-		copy[key] = val
+		cpy[key] = val
 	}
 	settingsMutex.RUnlock()
 
-	return copy
+	return cpy
 }
 
 // SetLogger configures the logger that will be used. This only applies to the hystrix package.
