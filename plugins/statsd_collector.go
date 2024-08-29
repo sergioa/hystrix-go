@@ -1,12 +1,11 @@
 package plugins
 
 import (
+	"github.com/cactus/go-statsd-client/v5/statsd"
+	metricCollector "github.com/sergioa/hystrix-go/hystrix/metric_collector"
 	"log"
 	"strings"
 	"time"
-
-	"github.com/afex/hystrix-go/hystrix/metric_collector"
-	"github.com/cactus/go-statsd-client/statsd"
 )
 
 // StatsdCollector fulfills the metricCollector interface allowing users to ship circuit
@@ -63,6 +62,9 @@ type StatsdCollectorConfig struct {
 //
 // Users should ensure to call Close() on the client.
 func InitializeStatsdCollector(config *StatsdCollectorConfig) (*StatsdCollectorClient, error) {
+	var client statsd.Statter
+	var err error
+
 	flushBytes := config.FlushBytes
 	if flushBytes == 0 {
 		flushBytes = LANStatsdFlushBytes
@@ -73,13 +75,17 @@ func InitializeStatsdCollector(config *StatsdCollectorConfig) (*StatsdCollectorC
 		sampleRate = 1
 	}
 
-	c, err := statsd.NewBufferedClient(config.StatsdAddr, config.Prefix, 1*time.Second, flushBytes)
+	client, err = statsd.NewClientWithConfig(&statsd.ClientConfig{
+		Address:       config.StatsdAddr,
+		Prefix:        config.Prefix,
+		FlushInterval: 1 * time.Second,
+		FlushBytes:    flushBytes})
+
 	if err != nil {
 		log.Printf("Could not initiale buffered client: %s. Falling back to a Noop Statsd client", err)
-		c, _ = statsd.NewNoopClient()
 	}
 	return &StatsdCollectorClient{
-		client:     c,
+		client:     client,
 		sampleRate: sampleRate,
 	}, err
 }
@@ -88,9 +94,6 @@ func InitializeStatsdCollector(config *StatsdCollectorConfig) (*StatsdCollectorC
 // prefix given to this circuit will be {config.Prefix}.{circuit_name}.{metric}.
 // Circuits with "/" in their names will have them replaced with ".".
 func (s *StatsdCollectorClient) NewStatsdCollector(name string) metricCollector.MetricCollector {
-	if s.client == nil {
-		log.Fatalf("Statsd client must be initialized before circuits are created.")
-	}
 	name = strings.Replace(name, "/", "-", -1)
 	name = strings.Replace(name, ":", "-", -1)
 	name = strings.Replace(name, ".", "-", -1)

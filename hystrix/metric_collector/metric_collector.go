@@ -19,7 +19,7 @@ type metricCollectorRegistry struct {
 	registry []func(name string) MetricCollector
 }
 
-// InitializeMetricCollectors runs the registried MetricCollector Initializers to create an array of MetricCollectors.
+// InitializeMetricCollectors runs the registered MetricCollector Initializers to create an array of MetricCollectors.
 func (m *metricCollectorRegistry) InitializeMetricCollectors(name string) []MetricCollector {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
@@ -57,8 +57,8 @@ type MetricResult struct {
 }
 
 // MetricCollector represents the contract that all collectors must fulfill to gather circuit statistics.
-// Implementations of this interface do not have to maintain locking around thier data stores so long as
-// they are not modified outside of the hystrix context.
+// Implementations of this interface do not have to maintain locking around their data stores so long as
+// they are not modified outside the hystrix context.
 type MetricCollector interface {
 	// Update accepts a set of metrics from a command execution for remote instrumentation
 	Update(MetricResult)

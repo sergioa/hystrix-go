@@ -3,11 +3,11 @@ package hystrix
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/sergioa/hystrix-go/hystrix/rolling"
+
 	"net/http"
 	"sync"
 	"time"
-
-	"github.com/afex/hystrix-go/hystrix/rolling"
 )
 
 const (
@@ -50,14 +50,14 @@ func (sh *StreamHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	events := sh.register(req)
 	defer sh.unregister(req)
 
-	notify := rw.(http.CloseNotifier).CloseNotify()
+	ctx := req.Context()
 
 	rw.Header().Add("Content-Type", "text/event-stream")
 	rw.Header().Set("Cache-Control", "no-cache")
 	rw.Header().Set("Connection", "keep-alive")
 	for {
 		select {
-		case <-notify:
+		case <-ctx.Done():
 			// client is gone
 			return
 		case event := <-events:
@@ -77,8 +77,8 @@ func (sh *StreamHandler) loop() {
 		case <-tick:
 			circuitBreakersMutex.RLock()
 			for _, cb := range circuitBreakers {
-				sh.publishMetrics(cb)
-				sh.publishThreadPools(cb.executorPool)
+				_ = sh.publishMetrics(cb)
+				_ = sh.publishThreadPools(cb.executorPool)
 			}
 			circuitBreakersMutex.RUnlock()
 		case <-sh.done:

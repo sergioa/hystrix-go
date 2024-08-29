@@ -6,7 +6,7 @@ import (
 )
 
 // Number tracks a numberBucket over a bounded number of
-// time buckets. Currently the buckets are one second long and only the last 10 seconds are kept.
+// time buckets. Currently, the buckets are one second long and only the last 10 seconds are kept.
 type Number struct {
 	Buckets map[int64]*numberBucket
 	Mutex   *sync.RWMutex

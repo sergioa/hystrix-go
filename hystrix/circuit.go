@@ -38,8 +38,8 @@ func GetCircuit(name string) (*CircuitBreaker, bool, error) {
 		circuitBreakersMutex.RUnlock()
 		circuitBreakersMutex.Lock()
 		defer circuitBreakersMutex.Unlock()
-		// because we released the rlock before we obtained the exclusive lock,
-		// we need to double check that some other thread didn't beat us to
+		// because we released the RLock before we obtained the exclusive lock,
+		// we need to double-check that some other thread didn't beat us to
 		// creation.
 		if cb, ok := circuitBreakers[name]; ok {
 			return cb, false, nil
@@ -87,8 +87,9 @@ func (circuit *CircuitBreaker) toggleForceOpen(toggle bool) error {
 	return nil
 }
 
-// IsOpen is called before any Command execution to check whether or
-// not it should be attempted. An "open" circuit means it is disabled.
+// IsOpen is called before any Command execution to check whether
+//
+//	it should be attempted. An "open" circuit means it is disabled.
 func (circuit *CircuitBreaker) IsOpen() bool {
 	circuit.mutex.RLock()
 	o := circuit.forceOpen || circuit.open

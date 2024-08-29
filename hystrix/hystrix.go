@@ -2,6 +2,7 @@ package hystrix
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -79,7 +80,7 @@ func GoC(ctx context.Context, name string, run runFuncC, fallback fallbackFuncC)
 		finished: make(chan bool, 1),
 	}
 
-	// dont have methods with explicit params and returns
+	// do not have methods with explicit params and returns
 	// let data come in and out naturally, like with any closure
 	// explicit error return to give place for us to kill switch the operation (fallback)
 
@@ -118,7 +119,7 @@ func GoC(ctx context.Context, name string, run runFuncC, fallback fallbackFuncC)
 
 		// Circuits get opened when recent executions have shown to have a high error rate.
 		// Rejecting new executions allows backends to recover, and the circuit will allow
-		// new traffic when it feels a healthly state has returned.
+		// new traffic when it feels a healthy state has returned.
 		if !cmd.circuit.AllowRequest() {
 			cmd.Lock()
 			// It's safe for another goroutine to go ahead releasing a nil ticket.
@@ -262,15 +263,15 @@ func (c *command) reportEvent(eventType string) {
 // errorWithFallback triggers the fallback while reporting the appropriate metric events.
 func (c *command) errorWithFallback(ctx context.Context, err error) {
 	eventType := "failure"
-	if err == ErrCircuitOpen {
+	if errors.Is(err, ErrCircuitOpen) {
 		eventType = "short-circuit"
-	} else if err == ErrMaxConcurrency {
+	} else if errors.Is(err, ErrMaxConcurrency) {
 		eventType = "rejected"
-	} else if err == ErrTimeout {
+	} else if errors.Is(err, ErrTimeout) {
 		eventType = "timeout"
-	} else if err == context.Canceled {
+	} else if errors.Is(err, context.Canceled) {
 		eventType = "context_canceled"
-	} else if err == context.DeadlineExceeded {
+	} else if errors.Is(err, context.DeadlineExceeded) {
 		eventType = "context_deadline_exceeded"
 	}
 

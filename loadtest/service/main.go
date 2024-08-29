@@ -1,20 +1,20 @@
-// Package main implements an http server which executes a hystrix command each request and
+// Package main implements a http server which executes a hystrix command each request and
 // sends metrics to a statsd instance to aid performance testing.
 package main
 
 import (
 	"flag"
+	"github.com/cactus/go-statsd-client/v5/statsd"
+	"github.com/sergioa/hystrix-go/hystrix"
+	metricCollector "github.com/sergioa/hystrix-go/hystrix/metric_collector"
+	"github.com/sergioa/hystrix-go/plugins"
+
 	"log"
 	"math/rand"
 	"net/http"
 	_ "net/http/pprof"
 	"runtime"
 	"time"
-
-	"github.com/afex/hystrix-go/hystrix"
-	"github.com/afex/hystrix-go/hystrix/metric_collector"
-	"github.com/afex/hystrix-go/plugins"
-	"github.com/cactus/go-statsd-client/statsd"
 )
 
 const (
@@ -41,7 +41,7 @@ func main() {
 	statsdHost := flag.String("statsd", "", "Statsd host to record load test metrics")
 	flag.Parse()
 
-	stats, err := statsd.NewClient(*statsdHost, "hystrix.loadtest.service")
+	stats, err := statsd.NewClientWithConfig(&statsd.ClientConfig{Address: *statsdHost, Prefix: "hystrix.loadtest.service"})
 	if err != nil {
 		log.Fatalf("could not initialize statsd client: %v", err)
 	}
@@ -70,11 +70,11 @@ func timedHandler(fn func(w http.ResponseWriter, r *http.Request), stats statsd.
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		fn(w, r)
-		stats.TimingDuration("request", time.Since(start), 1)
+		_ = stats.TimingDuration("request", time.Since(start), 1)
 	}
 }
 
-func handle(w http.ResponseWriter, r *http.Request) {
+func handle(w http.ResponseWriter, _ *http.Request) {
 	done := make(chan struct{}, 1)
 	errChan := hystrix.Go("test", func() error {
 		delta := rand.Intn(deltaWindow)
@@ -90,7 +90,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	case err := <-errChan:
 		http.Error(w, err.Error(), 500)
 	case <-done:
-		w.Write([]byte("OK"))
+		_, _ = w.Write([]byte("OK"))
 	}
 }
 

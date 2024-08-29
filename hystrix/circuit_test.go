@@ -99,7 +99,7 @@ func TestReportEventOpenThenClose(t *testing.T) {
 }
 
 func TestReportEventMultiThreaded(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
+	//rand.Seed(time.Now().UnixNano())
 	run := func() bool {
 		defer Flush()
 		// Make the circuit easily open and close intermittently.

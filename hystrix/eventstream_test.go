@@ -1,8 +1,10 @@
 package hystrix
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -116,16 +118,20 @@ func streamMetrics(t *testing.T, url string) (chan string, chan bool) {
 	go func() {
 		res, err := http.Get(url)
 		if err != nil {
-			t.Fatal(err)
+			t.Error(err)
+			return
 		}
-		defer res.Body.Close()
+		defer func(Body io.ReadCloser) {
+			_ = Body.Close()
+		}(res.Body)
 
 		buf := []byte{0}
 		data := ""
 		for {
 			_, err := res.Body.Read(buf)
 			if err != nil {
-				t.Fatal(err)
+				t.Error(err)
+				return
 			}
 
 			data += string(buf)
@@ -150,7 +156,9 @@ func streamMetrics(t *testing.T, url string) (chan string, chan bool) {
 func TestEventStream(t *testing.T) {
 	Convey("given a running event stream", t, func() {
 		server := startTestServer()
-		defer server.stopTestServer()
+		defer func(server *eventStreamTestServer) {
+			_ = server.stopTestServer()
+		}(server)
 
 		Convey("after 2 successful commands", func() {
 			sleepingCommand(t, "eventstream", 1*time.Millisecond)
@@ -181,12 +189,18 @@ func TestEventStream(t *testing.T) {
 func TestClientCancelEventStream(t *testing.T) {
 	Convey("given a running event stream", t, func() {
 		server := startTestServer()
-		defer server.stopTestServer()
+		defer func(server *eventStreamTestServer) {
+			_ = server.stopTestServer()
+		}(server)
 
 		sleepingCommand(t, "eventstream", 1*time.Millisecond)
 
 		Convey("after a client connects", func() {
-			req, err := http.NewRequest("GET", server.URL, nil)
+
+			ctx := context.Background()
+			ctx, cancel := context.WithCancel(ctx)
+
+			req, err := http.NewRequestWithContext(ctx, "GET", server.URL, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -202,21 +216,25 @@ func TestClientCancelEventStream(t *testing.T) {
 				buf := []byte{0}
 				res, err := client.Do(req)
 				if err != nil {
-					t.Fatal(err)
+					t.Error(err)
+					return
 				}
-				defer res.Body.Close()
+				defer func(Body io.ReadCloser) {
+					_ = Body.Close()
+				}(res.Body)
 
 				for {
 					select {
 					case <-wait:
 						//wait for master goroutine to break us out
-						tr.CancelRequest(req)
+						cancel()
 						return
 					default:
 						//read something
 						_, err = res.Body.Read(buf)
 						if err != nil {
-							t.Fatal(err)
+							t.Error(err)
+							return
 						}
 						if afr != nil {
 							afr.Done()
@@ -252,7 +270,9 @@ func TestClientCancelEventStream(t *testing.T) {
 func TestThreadPoolStream(t *testing.T) {
 	Convey("given a running event stream", t, func() {
 		server := startTestServer()
-		defer server.stopTestServer()
+		defer func(server *eventStreamTestServer) {
+			_ = server.stopTestServer()
+		}(server)
 
 		Convey("after a successful command", func() {
 			sleepingCommand(t, "threadpool", 1*time.Millisecond)
